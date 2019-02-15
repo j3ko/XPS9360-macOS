@@ -112,8 +112,142 @@ Remember, these values work for my specific machine, but might cause any other l
 ## HiDPI
 For a fhd display, use [one-key-hidpi](https://github.com/xzhih/one-key-hidpi)
 
+## What you need
+
+1. USB drive x2
+1. Another computer running macOS
+1. [Ubuntu 18.04+ ISO](https://www.ubuntu.com/download/desktop/thank-you?country=JP&version=18.04.1&architecture=amd64)
+1. [Clover EFI bootloader v2.4 r4862](https://sourceforge.net/projects/cloverefiboot/)
+1. [Clover Configurator v.5.3.0.0](https://mackie100projects.altervista.org/download-clover-configurator/)
+
+## Walkthrough
+
+1. Create Ubuntu live usb drive (UEFI bootable)
+
+    1. Open the Terminal Application.
+    1. Type command to convert the .iso file to .img using the convert option.
+        ```
+        hdiutil convert -format UDRW -o /path/to/target.img /path/to/ubuntu.iso
+        ```
+    1. Insert your flash media.
+    1. Type command to determine the device node assigned to your flash media (e.g. /dev/disk2).
+        ```
+        diskutil list
+        ```
+    1. Type command to unmount the flash (replace N with the disk number from the last command; in the previous example, N would be 2).
+        ```
+        diskutil unmountDisk /dev/diskN
+        ```
+    1. Type DD command (replace /path/to/downloaded.img with the path where the image file is located; for example, ./ubuntu.img). Prepend the device path with "r" for the [raw path which is much faster](https://superuser.com/questions/631592/why-is-dev-rdisk-about-20-times-faster-than-dev-disk-in-mac-os-x) than without the "r".
+        ```
+        sudo dd if=/path/to/downloaded.img of=/dev/rdiskN bs=1m
+        ```
+    *Note: your file might also be called `downloaded.img.dmg`. That's okay.*
+
+1. Create bootable Mojave usb drive
+
+    1. Format the USB drive
+        1. Format: APFS
+        1. Scheme: GUID
+    1. Install Mojave on the USB drive
+        ```
+        sudo /Applications/Install\ macOS\ Mojave.app/Contents/Resources/createinstallmedia –volume /Volumes/[USB NAME HERE] –nointeraction
+        ```
+    1. Install Clover EFI bootloader
+    1. Under `Change Install Location...` select the USB drive
+    1. Under `Customize` make sure the following are checked:
+        1. Clover for UEFI booting only
+        1. Install Clover in the ESP 
+        1. In themes, select a theme
+    1. After Clover installs, open Clover configurator
+    1. Under `Mount EFI`, mount the USB drive partition
+    1. Replace the `/EFI/Clover` folder with the Clover folder in this repo
+    1. Delete all folders in `/EFI/Clover/ktexts` except "Other"
+    1. From the repo `/ktexts` copy everything except the folders and text files into `/EFI/Clover/ktexts`
+    1. Under `/tools` delete the current `Shell64U.efi` file and rename `DVMT.efi` to `Shell64U.efi`
+    1. Open `/EFI/Clover/config.plist` in Clover configurator and under `Boot -> Custom Flags`, add `alcid=56`
+
+1. Preparing laptop
+    1. Updating BIOS
+        - Sata: AHCI
+        - Enable SMART Reporting
+        - Disable thunderbolt boot and pre-boot support
+        - USB security level: disabled
+        - Enable USB powershare
+        - Enable Unobtrusive mode
+        - Disable SD card reader (saves 0.5W of power)
+        - TPM Off
+        - Deactivate Computrace
+        - Enable CPU XD
+        - Disable Secure Boot
+        - Disable Intel SGX
+        - Enable Multi Core Support
+        - Enable Speedstep
+        - Enable C-States
+        - Enable TurboBoost
+        - Enable HyperThread
+        - Disable Wake on USB-C Dell Dock
+        - Battery charge profile: Standard
+        - Numlock Enable
+        - FN-lock mode: Disable/Standard
+        - Fastboot: minimal
+        - BIOS POST Time: 0s
+        - Enable VT
+        - Disable VT-D
+        - Wireless switch OFF for Wifi and BT
+        - Enable Wireless Wifi and BT
+        - Allow BIOS Downgrade
+        - Allow BIOS Recovery from HD, disable Auto-recovery
+        - Auto-OS recovery threshold: OFF
+        - SupportAssist OS Recovery: OFF
+
+    1. Preparing HD
+        1. Boot up in Ubuntu live 18.04
+        1. Under `Software & Updates` enable `Community-maintained free and open-sourced software (universal)`
+        1. Run the following:
+            ```
+            sudo apt update & sudo apt install smartmontools nvme-cli
+            sudo smartctl -a /dev/nvme0n1
+            sudo nvme format -l 1 /dev/nvme0n1
+            ```
+  
+1. Installing
+    1. Boot from Clover USB
+    1. In the shell, run the following:
+        ```
+        setup_var 0x4de 0x00
+        setup_var 0x785 0x06
+        setup_var 0x786 0x03
+        ```
+    1. In options add -v to the boot options to enable verbose mode
+    1. Boot up and install MacOS
+    1. Reboot with the USB again and load using the newly installed MacOS
+    1. This time install clover onto the NVME
+    1. Copy over the clover folder from the USB
+    1. Copy `/kexts/Library-Extensions` from the repo to `/Library/Extensions` on the NVME
+    1. Run the following:
+        ```
+        sudo touch /Library/Extensions
+        sudo chmod -R 755 /Library/Extensions
+        sudo chown -R root:wheel /Library/Extensions
+        sudo kextcache -i /
+        ```
+
+1. Post setup config
+    1. Enable sleep:
+        ```
+        sudo pmset -a hibernatemode 0
+        sudo pmset -a autopoweroff 0
+        sudo pmset -a standby 0
+        sudo rm /private/var/vm/sleepimage
+        sudo touch /private/var/vm/sleepimage
+        sudo chflags uchg /private/var/vm/sleepimage
+        ```
+
+    1. Install [ComboJack](https://github.com/hackintosh-stuff/ComboJack)
 ## Credits
 
+- [Install macOS Mojave on XPS 13 (9360)](http://markperez.info/install-macos-mojave-on-xps-13-9360-step-by-step-hackintosh-guide/)
 - [OS-X-Clover-Laptop-Config (Hot-patching)](https://github.com/RehabMan/OS-X-Clover-Laptop-Config)
 - [Dell XPS 13 9360 Guide by bozma88](https://www.tonymacx86.com/threads/guide-dell-xps-13-9360-on-macos-sierra-10-12-x-lts-long-term-support-guide.213141/)
 - [VoodooI2C on XPS 13 9630 by Vygr10565](https://www.tonymacx86.com/threads/guide-dell-xps-13-9360-on-macos-sierra-10-12-x-lts-long-term-support-guide.213141/page-202#post-1708487)
