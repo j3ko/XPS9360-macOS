@@ -147,7 +147,7 @@ For a fhd display, use [one-key-hidpi](https://github.com/xzhih/one-key-hidpi)
 1. Create bootable Mojave usb drive
 
     1. Format the USB drive
-        1. Format: APFS
+        1. Format: OSX Extended
         1. Scheme: GUID
     1. Install Mojave on the USB drive
         ```
